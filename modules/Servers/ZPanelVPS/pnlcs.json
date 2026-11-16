@@ -1,0 +1,26 @@
+{
+  "name": "ZPanelVPS",
+  "displayName": "zPanel VPS & Cloud Server Module",
+  "type": "server",
+  "version": "1.0.0",
+  "author": "zPanel Core Team",
+  "description": "PNLCS resmi zPanel VPS/VDS KVM otomasyonu, güç yönetimi, 3 donanım gauge ibresi ve SSO müşteri paneli entegrasyonu.",
+  "features": [
+    "create",
+    "suspend",
+    "unsuspend",
+    "terminate",
+    "reboot",
+    "start",
+    "stop",
+    "vnc",
+    "reset_root",
+    "sso"
+  ],
+  "ports": {
+    "api": 8056,
+    "staff": 8036,
+    "client": 8026
+  }
+}
+
