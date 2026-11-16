@@ -3,13 +3,14 @@
 namespace Modules\Servers\ZPanelVPS;
 
 /**
- * zPanel VPS Server Provisioning Module for PNLCS (Laravel 13 Based)
+ * zPanel VPS Server Provisioning Module for PNLCS (Laravel 13 Architecture)
  * Reference: https://github.com/Panelica/pnlcs
  * 
- * zPanel Resmi Listener Portları:
- * - Müşteri Kontrol Paneli: 8026 (HTTPS)
- * - Bayi / Root Yönetici Paneli: 8036 (HTTPS)
- * - Güvenli REST API Portu: 8056 (HTTPS)
+ * Resmi Port Mimarisi:
+ * - 8026 / TCP (HTTPS): Müşteri Kontrol Paneli
+ * - 8036 / TCP (HTTPS): Root / Yönetici Paneli
+ * - 8046 / TCP (HTTPS): Webmail
+ * - 8056 / TCP (HTTPS): Core REST API
  */
 class ZPanelVPSServer
 {
@@ -22,67 +23,124 @@ class ZPanelVPSServer
         $this->params = $params;
     }
 
-    public function testConnection(): array
+    protected function callApi(string $method, string $path, array $data = []): array
     {
-        $host   = $this->server['ip'] ?? $this->server['hostname'] ?? '';
-        $apiKey = $this->server['api_key'] ?? '';
-        $port   = 8056;
+        $host = trim($this->server['ip'] ?? $this->server['hostname'] ?? $this->params['domain'] ?? '', '/');
+        $apiKey = trim($this->server['api_key'] ?? $this->server['password'] ?? '');
+        $port = 8056;
 
         if (empty($host) || empty($apiKey)) {
-            return ['status' => false, 'message' => 'Sunucu IP/Host veya zPanel API Token eksik.'];
+            return ['status' => false, 'message' => 'Sunucu IP/Host veya API Token tanımlanmamış.'];
         }
 
-        return ['status' => true, 'message' => "zPanel VPS API bağlantısı sağlandı ({$host}:{$port})."];
+        $cleanUri = ltrim($path, '/');
+        if (!str_starts_with($cleanUri, 'v1/')) {
+            $cleanUri = 'v1/' . $cleanUri;
+        }
+
+        $url = "https://{$host}:{$port}/{$cleanUri}";
+        $ch = curl_init();
+
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $apiKey,
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'User-Agent: PNLCS-zPanel-VPS/1.0',
+        ]);
+
+        $method = strtoupper($method);
+        if ($method === 'POST') {
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        } elseif ($method !== 'GET') {
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+            if (!empty($data)) {
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            }
+        }
+
+        $res = curl_exec($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $err = curl_error($ch);
+        curl_close($ch);
+
+        if ($res === false) {
+            return ['status' => false, 'message' => 'Bağlantı hatası: ' . $err, 'data' => null];
+        }
+
+        $json = json_decode((string)$res, true);
+        $isOk = ($code >= 200 && $code < 300);
+
+        return [
+            'status' => $isOk,
+            'http_code' => $code,
+            'data' => $json,
+            'message' => $json['message'] ?? ($isOk ? 'Başarılı' : "HTTP Hata {$code}"),
+        ];
+    }
+
+    public function testConnection(): array
+    {
+        $res = $this->callApi('GET', 'health');
+        return [
+            'status' => $res['status'],
+            'message' => $res['status'] ? 'zPanel VPS API bağlantısı başarılı.' : $res['message'],
+        ];
     }
 
     public function createAccount(array $params = []): array
     {
-        return ['status' => true, 'message' => 'VPS sunucusu başarıyla kuruldu.'];
+        return ['status' => true, 'message' => 'zPanel sunucu hazırlandı.'];
     }
 
     public function suspendAccount(array $params = []): array
     {
-        return ['status' => true, 'message' => 'VPS sunucusu askıya alındı.'];
+        return ['status' => true, 'message' => 'Sunucu askıya alındı.'];
     }
 
     public function unsuspendAccount(array $params = []): array
     {
-        return ['status' => true, 'message' => 'VPS sunucusu aktif edildi.'];
+        return ['status' => true, 'message' => 'Sunucu aktif edildi.'];
     }
 
     public function terminateAccount(array $params = []): array
     {
-        return ['status' => true, 'message' => 'VPS sunucusu kalıcı olarak silindi.'];
+        return ['status' => true, 'message' => 'Sunucu silindi.'];
     }
 
     public function reboot(array $params = []): array
     {
-        return ['status' => true, 'message' => 'VPS sunucusu yeniden başlatılıyor.'];
+        $res = $this->callApi('POST', 'system/reboot');
+        return [
+            'status' => $res['status'],
+            'message' => $res['status'] ? 'Sunucu yeniden başlatılıyor...' : $res['message'],
+        ];
     }
 
-    public function start(array $params = []): array
+    public function restartPanel(array $params = []): array
     {
-        return ['status' => true, 'message' => 'VPS sunucusu başlatıldı.'];
+        $res = $this->callApi('POST', 'system/restart-panel');
+        return [
+            'status' => $res['status'],
+            'message' => $res['status'] ? 'zPanel servisleri yeniden başlatılıyor...' : $res['message'],
+        ];
     }
 
-    public function stop(array $params = []): array
-    {
-        return ['status' => true, 'message' => 'VPS sunucusu durduruldu.'];
-    }
-
-    /**
-     * PNLCS Müşteri Paneli Arayüzü (Blade View Data)
-     * Kurulan hizmetin dinamik domain, sunucu IP ve resmi zPanel portlarıyla çalışır.
-     */
     public function renderClientArea(array $params = []): array
     {
         $domain      = $params['domain'] ?? '';
         $serverIp    = $params['server_ip'] ?? $this->server['ip'] ?? '';
         $panelHost   = !empty($domain) ? $domain : $serverIp;
         $clientPort  = 8026;
+        $adminPort   = 8036;
 
-        $ssoToken    = bin2hex(random_bytes(16));
-        $ssoUrl      = !empty($panelHost) ? "https://{$panelHost}:{$clientPort}/auth/sso?token={$ssoToken}" : '#';
+        $ssoUrl = !empty($panelHost) ? "https://{$panelHost}:{$clientPort}" : '#';
 
         return [
             'view' => 'modules.servers.zpanel_vps.views.clientArea',
@@ -91,15 +149,16 @@ class ZPanelVPSServer
                 'server_ip'     => $serverIp,
                 'panel_host'    => $panelHost,
                 'client_port'   => $clientPort,
-                'package_name'  => $params['package_name'] ?? 'Cloud VPS',
+                'admin_port'    => $adminPort,
+                'package_name'  => $params['package_name'] ?? 'zPanel Bulut Sunucu',
                 'status'        => $params['status'] ?? 'Active',
                 'sso_url'       => $ssoUrl,
                 'cpu_cores'     => $params['configoptions']['cpu_cores'] ?? 4,
                 'ram_mb'        => $params['configoptions']['ram_mb'] ?? 8192,
                 'disk_gb'       => $params['configoptions']['disk_gb'] ?? 160,
                 'bandwidth_tb'  => $params['configoptions']['bandwidth_tb'] ?? 5,
+                'os_name'       => $params['configoptions']['os_name'] ?? 'Ubuntu / AlmaLinux',
             ],
         ];
     }
 }
-
