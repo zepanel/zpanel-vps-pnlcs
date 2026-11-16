@@ -1,6 +1,8 @@
 {{-- zPanel VPS PNLCS Blade View --}}
 {{-- Port Mimarisi: 8026 (Client), 8036 (Root), 8046 (Webmail), 8056 (API) --}}
 
+<link rel="stylesheet" href="/modules/Servers/ZPanelVPS/assets/css/client.css">
+
 <div class="zp-pnlcs-vps">
     <!-- Üst Başlık Kartı -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
