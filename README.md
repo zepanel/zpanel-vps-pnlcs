@@ -1,4 +1,4 @@
-﻿# zPanel VPS & Cloud Server Module for PNLCS
+# zPanel VPS & Cloud Server Module for PNLCS
 
 Panelica PNLCS (Laravel 13) için zPanel VPS yönetim eklentisi.
 
