@@ -132,10 +132,16 @@ class ZPanelVPSServer
         ];
     }
 
+    public function clientArea(array $params = []): array
+    {
+        return $this->renderClientArea($params);
+    }
+
     public function renderClientArea(array $params = []): array
     {
-        $domain      = $params['domain'] ?? '';
-        $serverIp    = $params['server_ip'] ?? $this->server['ip'] ?? '';
+        $p = array_merge($this->params, $params);
+        $domain      = $p['domain'] ?? '';
+        $serverIp    = $p['server_ip'] ?? $this->server['ip'] ?? '';
         $panelHost   = !empty($domain) ? $domain : $serverIp;
         $clientPort  = 8026;
         $adminPort   = 8036;
@@ -150,14 +156,15 @@ class ZPanelVPSServer
                 'panel_host'    => $panelHost,
                 'client_port'   => $clientPort,
                 'admin_port'    => $adminPort,
-                'package_name'  => $params['package_name'] ?? 'zPanel Bulut Sunucu',
-                'status'        => $params['status'] ?? 'Active',
+                'package_name'  => $p['package_name'] ?? 'zPanel Bulut Sunucu',
+                'status'        => $p['status'] ?? 'Active',
                 'sso_url'       => $ssoUrl,
-                'cpu_cores'     => $params['configoptions']['cpu_cores'] ?? 4,
-                'ram_mb'        => $params['configoptions']['ram_mb'] ?? 8192,
-                'disk_gb'       => $params['configoptions']['disk_gb'] ?? 160,
-                'bandwidth_tb'  => $params['configoptions']['bandwidth_tb'] ?? 5,
-                'os_name'       => $params['configoptions']['os_name'] ?? 'Ubuntu / AlmaLinux',
+                'cpu_cores'     => $p['configoptions']['cpu_cores'] ?? 4,
+                'ram_mb'        => $p['configoptions']['ram_mb'] ?? 8192,
+                'disk_gb'       => $p['configoptions']['disk_gb'] ?? 160,
+                'bandwidth_tb'  => $p['configoptions']['bandwidth_tb'] ?? 5,
+                'os_name'       => $p['configoptions']['os_name'] ?? 'Ubuntu / AlmaLinux',
+                'service_id'    => $p['service_id'] ?? 0,
             ],
         ];
     }

@@ -32,3 +32,4 @@ Accept: application/json
 | `restartPanel()` | `POST` | `/v1/system/restart-panel` | zPanel Core ve zMaxServer servislerini yeniden başlatma |
 | `changePackage()` | Dahili | - | vCPU, RAM ve disk donanım özelliklerini güncelleme |
 | `clientArea()` | Blade | `views/clientArea.blade.php` | Donanım metrikleri, port bilgileri ve yönetim eylemleri |
+
